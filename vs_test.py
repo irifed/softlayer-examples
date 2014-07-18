@@ -33,7 +33,7 @@ def get_sshkey_id(label):
     return id
 
 def create_instance():
-    sshkey_id = get_sshkey_id('irina@ru.ibm.com')
+    sshkey_id = get_sshkey_id('<SSH KEY LABEL>')
 
     print('Sending create_instance request...')
     vs = vs_manager.create_instance(
