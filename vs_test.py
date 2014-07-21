@@ -8,6 +8,7 @@
 
 import SoftLayer
 import traceback
+import pprint
 
 # read credentials from ~/.softlayer file
 client = SoftLayer.Client()
@@ -23,6 +24,20 @@ def list_instances_in_domain(domain):
     vs_list = vs_manager.list_instances(domain=domain)
     for vs in vs_list:
         print('{}\t{}'.format(vs['id'], vs['fullyQualifiedDomainName']))
+
+def list_instances_with_tags(tags):
+    if type(tags) is not list:
+        raise Exception('`tags` must be a list! otherwise results are incorrect without warnings')
+
+    print(tags)
+    
+    vs_list = vs_manager.list_instances(tags=tags)
+    print('Found {} virtual servers with tags "{}"'.format(len(vs_list), ','.join(tags)))
+    for vs in vs_list:
+        # surprisingly `vs` object does not contain `tags` parameter
+        # tag can be double checked by `get_tags` function
+        pprint.pprint(vs)
+
 
 def get_sshkey_id(label):
     key_manager = SoftLayer.managers.SshKeyManager(client)
@@ -85,12 +100,48 @@ def cancel_instance(instance_id):
     print('...cancel request sent')
     # TODO wait for instance to be really deleted - ?
 
+def set_tags(instance_id, tags=None):
+    # `tags` is list of tags
+    # SL Python API Client does not support tags yet, so have to use API directly
+
+    if type(tags) is not list:
+        raise Exception('`tags` parameter must be a list')
+
+    # SL API expects `tags` to be a comma separated list
+    tags = ','.join(tags)
+
+    vg = client['Virtual_Guest']
+    vg.setTags(tags, id=instance_id)
+
+def get_tags(instance_id):
+    vg = client['Virtual_Guest']
+    tags = vg.getTagReferences(id=instance_id)
+    pprint.pprint(tags)
+
 def main():
-    vs_id = create_instance()
-    list_instances_in_domain('irina.com')
-    cancel_instance(vs_id)
-    list_instances_in_domain('irina.com')
-    # get_instance_info(5473634)
+
+    test_create = False
+    test_tags = True
+
+    if (test_create):
+        list_instances_in_domain('irina.com')
+        vs_id = create_instance()
+        list_instances_in_domain('irina.com')
+        cancel_instance(vs_id)
+        list_instances_in_domain('irina.com')
+
+    if (test_tags):
+        vs_id = 5473634
+        get_instance_info(vs_id)
+        tags = ['testtag1', 'testtag2']
+        print('\n\nSetting tags `{}` on instance id={}'.format(','.join(tags), vs_id))
+        set_tags(vs_id, tags)
+        print('\n\nTags are set! Let\'s check tags on this instance:')
+        get_tags(vs_id)
+        print('\n\nNow check search instances by tags:')
+        list_instances_with_tags(tags)
+        print('\n\nFinally, try to search by one of tags:')
+        list_instances_with_tags([tags[0]])
 
 if __name__ == "__main__":
     main()
